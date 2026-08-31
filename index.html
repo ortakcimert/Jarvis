@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarvis</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c0e16">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jarvis">
+<style>
+  :root {
+    --ink: #23281f;
+    --paper: #f6f3ea;
+    --moss: #4c6b4f;
+    --moss-dark: #34492f;
+    --clay: #b5734a;
+    --line: #d8d2c1;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .app {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  header {
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    margin: 4px 0 0;
+    font-size: 0.92rem;
+    color: #5c6355;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--moss);
+    margin-right: 6px;
+  }
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .msg {
+    max-width: 86%;
+    padding: 12px 15px;
+    border-radius: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.97rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--moss);
+    color: #fff;
+    border-bottom-right-radius: 0;
+  }
+  .msg.assistant {
+    align-self: flex-start;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 0;
+  }
+  .msg.system-note {
+    align-self: center;
+    color: #8a8272;
+    font-size: 0.82rem;
+    font-style: italic;
+  }
+  .search-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.76rem;
+    color: var(--clay);
+    margin-bottom: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .thinking {
+    align-self: flex-start;
+    color: #8a8272;
+    font-size: 0.9rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 12px 15px;
+  }
+  .dot-flash {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #8a8272;
+    margin: 0 2px;
+    animation: flash 1.2s infinite;
+  }
+  .dot-flash:nth-child(2) { animation-delay: 0.2s; }
+  .dot-flash:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes flash { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+
+  form#composer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px 20px;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+  }
+  #input {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 11px 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.97rem;
+    background: var(--card);
+    color: var(--ink);
+    line-height: 1.4;
+    max-height: 120px;
+  }
+  #input:focus { outline: 2px solid var(--moss); outline-offset: 1px; }
+  button#send {
+    background: var(--moss-dark);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  button#send:disabled { opacity: 0.5; cursor: default; }
+  button#send:hover:not(:disabled) { background: var(--moss); }
+
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 20px 14px;
+  }
+  .chip {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.82rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 7px 13px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .chip:hover { border-color: var(--moss); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Jarvis</h1>
+    <p><span class="status-dot"></span>Web taraması açık — güncel bilgilere erişebilir</p>
+  </header>
+
+  <div id="chat"></div>
+
+  <div class="suggestions" id="suggestions">
+    <div class="chip">Bugün hava nasıl olacak?</div>
+    <div class="chip">Dolar kuru ne kadar?</div>
+    <div class="chip">Yakınımdaki eczaneler açık mı?</div>
+    <div class="chip">Bu akşam ne pişirsem?</div>
+  </div>
+
+  <form id="composer">
+    <textarea id="input" rows="1" placeholder="Bir şey sor..."></textarea>
+    <button id="send" type="submit">Gönder</button>
+  </form>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const form = document.getElementById('composer');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const suggestions = document.getElementById('suggestions');
+
+let history = [];
+
+function addMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function addThinking() {
+  const div = document.createElement('div');
+  div.className = 'thinking';
+  div.innerHTML = 'Düşünüyor <span class="dot-flash"></span><span class="dot-flash"></span><span class="dot-flash"></span>';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+async function sendMessage(text) {
+  if (!text.trim()) return;
+  suggestions.style.display = 'none';
+  addMessage('user', text);
+  history.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  const thinkingEl = addThinking();
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: "Sen kullanıcının günlük hayattaki pratik ihtiyaçlarına yardımcı olan, Türkçe konuşan bir asistansın. Hava durumu, güncel fiyatlar, haberler, yerel bilgiler gibi güncelliğin önemli olduğu konularda web arama aracını kullan. Kısa, net ve samimi bir dille cevap ver. Kullanıcının konumunu bilmiyorsan ve konum gerekiyorsa nazikçe sor.",
+        messages: history,
+        tools: [{ type: "web_search_20250305", name: "web_search" }]
+      })
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error((errBody.error && errBody.error.message) || ('Sunucu hatası (' + response.status + ')'));
+    }
+
+    const data = await response.json();
+    thinkingEl.remove();
+
+    if (data.error) {
+      throw new Error(data.error.message || 'bilinmeyen hata');
+    }
+
+    let usedSearch = false;
+    let fullText = '';
+    for (const block of data.content || []) {
+      if (block.type === 'server_tool_use' && block.name === 'web_search') {
+        usedSearch = true;
+      }
+      if (block.type === 'text') {
+        fullText += block.text;
+      }
+    }
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'msg assistant';
+    if (usedSearch) {
+      const tag = document.createElement('div');
+      tag.className = 'search-tag';
+      tag.textContent = '🔎 Web\'de arandı';
+      msgDiv.appendChild(tag);
+    }
+    const textNode = document.createElement('span');
+    textNode.textContent = fullText || '(cevap alınamadı)';
+    msgDiv.appendChild(textNode);
+    chat.appendChild(msgDiv);
+    chat.scrollTop = chat.scrollHeight;
+
+    // Not: geçmişe sadece sade metni kaydediyoruz. Arama sonuçlarının ham
+    // teknik verisini geri göndermek bir sonraki isteği bozabiliyordu.
+    history.push({ role: 'assistant', content: fullText || '(cevap yok)' });
+  } catch (err) {
+    if (thinkingEl.parentNode) thinkingEl.remove();
+    addMessage('assistant', '⚠️ ' + err.message);
+    // Hatalı isteğin kullanıcı mesajını geçmişten çıkar, böylece bozuk
+    // geçmiş sonraki sorulara da bulaşmaz.
+    history.pop();
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  sendMessage(input.value);
+});
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    form.requestSubmit();
+  }
+});
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => sendMessage(chip.textContent));
+});
+
+addMessage('assistant', 'Merhaba! Hava durumu, güncel fiyatlar, haberler veya günlük hayatla ilgili aklına takılan her şeyi sorabilirsin — gerekirse web\'de arama yaparım.');
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
